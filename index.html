@@ -63,9 +63,9 @@
     </div>
 
     <div class="form-group">
-        <label>Foto Recibo</label>
-        <input type="file" id="foto" accept="image/*" capture="environment">
-    </div>
+		<label>Foto Recibo (C&aacute;mara o Archivo)</label>
+		<input type="file" id="foto" accept="image/*">
+	</div>
 
     <button class="btn-add" onclick="agregarGasto()">+ Agregar al Reporte</button>
 
@@ -81,6 +81,8 @@
             </thead>
             <tbody id="tablaCuerpo"></tbody>
         </table>
+		<div id="galeriaFotos" style="margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px;">
+		</div>
         <button class="btn-export" onclick="exportarExcel()">Generar y Enviar Excel</button>
         <button class="btn-danger" onclick="vaciarTodo()">Borrar Todo el Reporte</button>
     </div>
@@ -143,33 +145,74 @@
         }
     }
 
-    function agregarGasto() {
-        const prov = document.getElementById('proveedor').value.trim();
-        const nit = document.getElementById('nit').value.trim();
-        const centro = document.getElementById('centroCosto').value;
-        const desc = document.getElementById('descripcion').value.trim();
-        const val = parseFloat(document.getElementById('valor').value);
-        
-        if(!prov || !val || !nit || !centro) return alert("Proveedor, NIT, Centro de Costo y Valor son obligatorios");
+    // Variable para guardar las im¨¢genes temporalmente en Base64
+let fotosGuardadas = [];
 
-        if (!misProveedores[nit]) {
-            misProveedores[nit] = prov;
-            localStorage.setItem('misProveedores', JSON.stringify(misProveedores));
-        }
+function agregarGasto() {
+    const prov = document.getElementById('proveedor').value.trim();
+    const nit = document.getElementById('nit').value.trim();
+    const centro = document.getElementById('centroCosto').value;
+    const desc = document.getElementById('descripcion').value.trim();
+    const val = parseFloat(document.getElementById('valor').value);
+    const fotoInput = document.getElementById('foto');
+    
+    if(!prov || !val || !nit || !centro) return alert("Proveedor, NIT, Centro de Costo y Valor son obligatorios");
 
-        const nuevo = {
-            "Proveedor": prov,
-            "NIT": nit,
-            "Centro de costo": centro,
-            "Descripci\u00f3n": desc,
-            "Valores": val
-        };
-
-        listaGastos.push(nuevo);
-        localStorage.setItem('reporteCajaMenor', JSON.stringify(listaGastos));
-        actualizarTabla();
-        limpiarFormulario();
+    // Guardar Proveedor si no existe
+    if (!misProveedores[nit]) {
+        misProveedores[nit] = prov;
+        localStorage.setItem('misProveedores', JSON.stringify(misProveedores));
     }
+
+    const nuevoGasto = {
+        "Proveedor": prov,
+        "NIT": nit,
+        "Centro de costo": centro,
+        "Descripci\u00f3n": desc,
+        "Valores": val
+    };
+
+    // Procesar la foto si existe
+    if (fotoInput.files && fotoInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            // Guardamos la imagen en la lista de fotos
+            fotosGuardadas.push(e.target.result);
+            listaGastos.push(nuevoGasto);
+            localStorage.setItem('reporteCajaMenor', JSON.stringify(listaGastos));
+            // Tambi¨¦n guardamos las fotos (Cuidado: LocalStorage tiene l¨ªmite de ~5MB)
+            localStorage.setItem('fotosCajaMenor', JSON.stringify(fotosGuardadas));
+            
+            actualizarTabla();
+            renderizarGaleria();
+            limpiarFormulario();
+        };
+        reader.readAsDataURL(fotoInput.files[0]);
+    } else {
+        alert("Es recomendable adjuntar una foto del recibo.");
+        // Si decides permitirlo sin foto, descomenta estas l¨ªneas:
+        // listaGastos.push(nuevoGasto);
+        // guardarEnMemoria();
+        // actualizarTabla();
+        // limpiarFormulario();
+    }
+}
+
+function renderizarGaleria() {
+    const contenedor = document.getElementById('galeriaFotos');
+    const fotosCargadas = JSON.parse(localStorage.getItem('fotosCajaMenor')) || [];
+    contenedor.innerHTML = "";
+    
+    fotosCargadas.forEach((foto, index) => {
+        const img = document.createElement('img');
+        img.src = foto;
+        img.style.width = "100%";
+        img.style.borderRadius = "8px";
+        img.style.border = "2px solid #0056b3";
+        img.onclick = () => window.open(foto); // Al tocarla se abre en grande
+        contenedor.appendChild(img);
+    });
+}
 
     function actualizarTabla() {
         const cuerpo = document.getElementById('tablaCuerpo');
