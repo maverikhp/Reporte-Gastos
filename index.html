@@ -14,43 +14,42 @@
         input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
         .btn-add { background: #28a745; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-export { background: #007bff; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; font-weight: bold; margin-top: 20px; }
+        .btn-danger { background: #dc3545; color: white; border: none; padding: 10px; width: 100%; border-radius: 6px; margin-top: 10px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.8em; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background: #d1ecf1; }
-        .total-row { font-weight: bold; background: #eee; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2>Registro de Gastos</h2>
-    
+        
+    <div class="form-group">
+        <label>NIT (Escribe para buscar guardados)</label>
+        <input type="text" id="nit" placeholder="Ej: 52621734-1" oninput="autocompletarProveedor()">
+    </div>
+
     <div class="form-group">
         <label>Proveedor</label>
         <input type="text" id="proveedor" placeholder="Ej: Ferreteria La Roca">
     </div>
-    
+
+    <details style="margin-top: 20px; background: #eee; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+        <summary>?? Configurar Nuevos Centros de Costo</summary>
+        <input type="text" id="nuevoCodCC" placeholder="C¨®digo (ej: 23823...)">
+        <input type="text" id="nuevoNomCC" placeholder="Nombre (ej: Papeler¨ªa)">
+        <button onclick="guardarNuevoCC()" style="background: #6c757d; color:white; border:none; padding:8px; width:100%; margin-top:5px; border-radius:4px;">+ Registrar Centro de Costo</button>
+    </details>
+
     <div class="form-group">
-        <label>NIT</label>
-        <input type="text" id="nit" placeholder="Ej: 52621734-1">
+        <label>Centro de Costo (Busca por nombre o c¨®digo)</label>
+        <input type="text" id="busquedaCC" placeholder="?? Escribe para buscar..." oninput="filtrarCentros()">
+        <select id="centroCosto" size="5" style="margin-top:5px;"></select>
     </div>
 
     <div class="form-group">
-    <label>Centro de Costo (Busca por nombre o cÃ³digo)</label>
-    <input type="text" id="busquedaCC" placeholder="ðŸ” Escribe para buscar..." oninput="filtrarCentros()">
-    
-    <select id="centroCosto" size="5">
-        <option value="2382300250000101">Mantenimiento (2382300250000101)</option>
-        <option value="2382301317000104">PapelerÃ­a (2382301317000104)</option>
-        <option value="2382300253000401">Obras Civiles (2382300253000401)</option>
-        <option value="2382301199001004">Servicios (2382301199001004)</option>
-        <option value="2382300550000202">CafeterÃ­a (2382300550000202)</option>
-        <option value="2382301999000303">Transporte (2382301999000303)</option>
-    </select>
-</div>
-
-    <div class="form-group">
-        <label>DescripciÃ³n</label>
+        <label>Descripci¨®n</label>
         <input type="text" id="descripcion" placeholder="Ej: Compra de Rastrillos">
     </div>
 
@@ -73,39 +72,71 @@
                     <th>Proveedor</th>
                     <th>Centro</th>
                     <th>Valor</th>
+                    <th>Acci¨®n</th>
                 </tr>
             </thead>
             <tbody id="tablaCuerpo"></tbody>
         </table>
         <button class="btn-export" onclick="exportarExcel()">Generar y Enviar Excel</button>
+        <button class="btn-danger" onclick="vaciarTodo()">Borrar Todo el Reporte</button>
     </div>
 </div>
 
 <script>
-    // 1. Cargar datos guardados al iniciar la aplicaciÃ³n
+    // Inicializar bases de datos desde LocalStorage
     let listaGastos = JSON.parse(localStorage.getItem('reporteCajaMenor')) || [];
-    
-    // Si ya habÃ­a datos, mostrar la tabla de inmediato
-    if (listaGastos.length > 0) {
-        actualizarTabla();
-    }
-	
-	function filtrarCentros() {
-		const textoBusqueda = document.getElementById('busquedaCC').value.toLowerCase();
-		const select = document.getElementById('centroCosto');
-		const opciones = select.options;
+    let misProveedores = JSON.parse(localStorage.getItem('misProveedores')) || {};
+    let misCentrosCosto = JSON.parse(localStorage.getItem('misCentrosCosto')) || [
+        {cod: "2382300250000101", nom: "Mantenimiento"},
+        {cod: "2382301317000104", nom: "Papeler¨ªa"},
+        {cod: "2382300253000401", nom: "Obras Civiles"},
+        {cod: "2382301199001004", nom: "Servicios"}
+    ];
 
-		for (let i = 0; i < opciones.length; i++) {
-			const textoOpcion = opciones[i].text.toLowerCase();
-			// Si el texto de la opciÃ³n incluye lo que escribimos, la mostramos
-			if (textoOpcion.includes(textoBusqueda)) {
-				opciones[i].style.display = ""; 
-			} else {
-				opciones[i].style.display = "none"; // Ocultamos si no coincide
-			}
-		}
-	}
-	
+    document.addEventListener("DOMContentLoaded", () => {
+        renderizarCentrosCosto();
+        if (listaGastos.length > 0) actualizarTabla();
+    });
+
+    function autocompletarProveedor() {
+        const nitIngresado = document.getElementById('nit').value;
+        if (misProveedores[nitIngresado]) {
+            document.getElementById('proveedor').value = misProveedores[nitIngresado];
+        }
+    }
+
+    function guardarNuevoCC() {
+        const cod = document.getElementById('nuevoCodCC').value;
+        const nom = document.getElementById('nuevoNomCC').value;
+        if(!cod || !nom) return alert("Llena ambos campos");
+
+        misCentrosCosto.push({cod, nom});
+        localStorage.setItem('misCentrosCosto', JSON.stringify(misCentrosCosto));
+        renderizarCentrosCosto();
+        alert("Centro de costo guardado");
+        document.getElementById('nuevoCodCC').value = "";
+        document.getElementById('nuevoNomCC').value = "";
+    }
+
+    function renderizarCentrosCosto() {
+        const select = document.getElementById('centroCosto');
+        select.innerHTML = "";
+        misCentrosCosto.forEach(cc => {
+            const opt = document.createElement('option');
+            opt.value = cc.cod;
+            opt.textContent = `${cc.nom} (${cc.cod})`;
+            select.appendChild(opt);
+        });
+    }
+
+    function filtrarCentros() {
+        const busqueda = document.getElementById('busquedaCC').value.toLowerCase();
+        const opciones = document.getElementById('centroCosto').options;
+        for (let opt of opciones) {
+            opt.style.display = opt.text.toLowerCase().includes(busqueda) ? "" : "none";
+        }
+    }
+
     function agregarGasto() {
         const prov = document.getElementById('proveedor').value;
         const nit = document.getElementById('nit').value;
@@ -113,20 +144,23 @@
         const desc = document.getElementById('descripcion').value;
         const val = parseFloat(document.getElementById('valor').value);
         
-        if(!prov || !val) return alert("Por favor completa Proveedor y Valor");
+        if(!prov || !val || !nit || !centro) return alert("Proveedor, NIT, Centro de Costo y Valor son obligatorios");
+
+        if (!misProveedores[nit]) {
+            misProveedores[nit] = prov;
+            localStorage.setItem('misProveedores', JSON.stringify(misProveedores));
+        }
 
         const nuevo = {
             "Proveedor": prov,
-            "NIT": nit || "(blank)",
+            "NIT": nit,
             "Centro de costo": centro,
             "Descripcion": desc,
             "Valores": val
         };
 
-        // 2. Guardar en el array y sincronizar con LocalStorage
         listaGastos.push(nuevo);
         guardarEnMemoria();
-        
         actualizarTabla();
         limpiarFormulario();
     }
@@ -145,24 +179,38 @@
                 <td>${g.Proveedor}</td>
                 <td>${g["Centro de costo"]}</td>
                 <td>$${g.Valores.toLocaleString()}</td>
-                <td><button onclick="eliminarGasto(${index})" style="background:red; color:white; border:none; border-radius:4px; padding:2px 5px;">X</button></td>
+                <td><button onclick="eliminarGasto(${index})" style="background:red; color:white; border:none; border-radius:4px;">X</button></td>
             </tr>`;
         });
     }
 
     function eliminarGasto(index) {
-        if(confirm("Â¿Eliminar este registro?")) {
+        if(confirm("?Eliminar este registro?")) {
             listaGastos.splice(index, 1);
             guardarEnMemoria();
             actualizarTabla();
         }
     }
 
+    function exportarExcel() {
+        if (listaGastos.length === 0) return alert("No hay datos");
+        const total = listaGastos.reduce((sum, g) => sum + g.Valores, 0);
+        const reporteFinal = listaGastos.map(g => ({...g}));
+        reporteFinal.push({ "Proveedor": "TOTAL GENERAL", "Valores": total });
+
+        const ws = XLSX.utils.json_to_sheet(reporteFinal);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Reporte");
+        XLSX.writeFile(wb, "Solicitud_Reembolso.xlsx");
+        
+        window.location.href = `mailto:contabilidad@empresa.com?subject=Reembolso&body=Total: $${total}`;
+    }
+
     function vaciarTodo() {
-        if(confirm("Â¿EstÃ¡s seguro de que quieres borrar TODO el reporte actual?")) {
+        if(confirm("?Borrar todo el reporte actual?")) {
             listaGastos = [];
             localStorage.removeItem('reporteCajaMenor');
-            location.reload(); // Refresca la interfaz
+            location.reload();
         }
     }
 
@@ -171,33 +219,9 @@
         document.getElementById('nit').value = "";
         document.getElementById('descripcion').value = "";
         document.getElementById('valor').value = "";
-    }
-
-    function exportarExcel() {
-        if (listaGastos.length === 0) return alert("No hay datos para exportar");
-
-        const total = listaGastos.reduce((sum, g) => sum + g.Valores, 0);
-        
-        // Formatear datos para el Excel igual a la imagen
-        const reporteFinal = listaGastos.map(g => ({
-            "Proveedor": g.Proveedor,
-            "NIT": g.NIT,
-            "Centro de costo": g["Centro de costo"],
-            "DescripciÃ³n": g.Descripcion,
-            "Valores": g.Valores
-        }));
-
-        reporteFinal.push({ "Proveedor": "TOTAL GENERAL", "Valores": total });
-
-        const ws = XLSX.utils.json_to_sheet(reporteFinal);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Reporte_Caja");
-
-        XLSX.writeFile(wb, "Solicitud_Reembolso.xlsx");
-        
-        window.location.href = `mailto:contabilidad@empresa.com?subject=Reembolso Caja Menor&body=Se adjunta reporte por valor total de $${total.toLocaleString()}.`;
+        document.getElementById('busquedaCC').value = "";
+        renderizarCentrosCosto();
     }
 </script>
-
 </body>
 </html>
