@@ -6,25 +6,27 @@
     <title>Reporte Caja Menor Pro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 15px; background: #e9ecef; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 15px; background: #e9ecef; }
         .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h2 { color: #0056b3; text-align: center; }
+        h2 { color: #0056b3; text-align: center; margin-top: 0; }
         .form-group { margin-bottom: 12px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.9em; }
-        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
-        .btn-add { background: #28a745; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .btn-export { background: #007bff; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; font-weight: bold; margin-top: 20px; }
-        .btn-danger { background: #dc3545; color: white; border: none; padding: 10px; width: 100%; border-radius: 6px; margin-top: 10px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.8em; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.9em; color: #333; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        .btn-add { background: #28a745; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 16px; }
+        .btn-export { background: #007bff; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; font-weight: bold; margin-top: 20px; font-size: 16px; }
+        .btn-danger { background: #dc3545; color: white; border: none; padding: 10px; width: 100%; border-radius: 6px; margin-top: 10px; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.85em; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background: #d1ecf1; }
+        th { background: #0056b3; color: white; }
+        details { margin-top: 15px; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; }
+        summary { font-weight: bold; cursor: pointer; color: #555; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2>Registro de Gastos</h2>
-        
+    
     <div class="form-group">
         <label>NIT (Escribe para buscar guardados)</label>
         <input type="text" id="nit" placeholder="Ej: 52621734-1" oninput="autocompletarProveedor()">
@@ -32,20 +34,22 @@
 
     <div class="form-group">
         <label>Proveedor</label>
-        <input type="text" id="proveedor" placeholder="Ej: Ferreteria La Roca">
+        <input type="text" id="proveedor" placeholder="Ej: Ferreter赤a La Roca">
     </div>
 
-    <details style="margin-top: 20px; background: #eee; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+    <details>
         <summary>?? Configurar Nuevos Centros de Costo</summary>
-        <input type="text" id="nuevoCodCC" placeholder="C車digo (ej: 23823...)">
-        <input type="text" id="nuevoNomCC" placeholder="Nombre (ej: Papeler赤a)">
-        <button onclick="guardarNuevoCC()" style="background: #6c757d; color:white; border:none; padding:8px; width:100%; margin-top:5px; border-radius:4px;">+ Registrar Centro de Costo</button>
+        <div style="margin-top: 10px;">
+            <input type="text" id="nuevoCodCC" placeholder="C車digo (ej: 23823...)">
+            <input type="text" id="nuevoNomCC" placeholder="Nombre (ej: Papeler赤a)" style="margin-top: 5px;">
+            <button onclick="guardarNuevoCC()" style="background: #6c757d; color:white; border:none; padding:8px; width:100%; margin-top:8px; border-radius:4px;">+ Registrar Centro de Costo</button>
+        </div>
     </details>
 
-    <div class="form-group">
+    <div class="form-group" style="margin-top: 15px;">
         <label>Centro de Costo (Busca por nombre o c車digo)</label>
-        <input type="text" id="busquedaCC" placeholder="?? Escribe para buscar..." oninput="filtrarCentros()">
-        <select id="centroCosto" size="5" style="margin-top:5px;"></select>
+        <input type="text" id="busquedaCC" placeholder="?? Escribe para buscar..." oninput="filtrarCentros()" style="margin-bottom: 5px;">
+        <select id="centroCosto" size="5"></select>
     </div>
 
     <div class="form-group">
@@ -72,7 +76,7 @@
                     <th>Proveedor</th>
                     <th>Centro</th>
                     <th>Valor</th>
-                    <th>Acci車n</th>
+                    <th>Borrar</th>
                 </tr>
             </thead>
             <tbody id="tablaCuerpo"></tbody>
@@ -83,7 +87,7 @@
 </div>
 
 <script>
-    // Inicializar bases de datos desde LocalStorage
+    // Bases de datos locales
     let listaGastos = JSON.parse(localStorage.getItem('reporteCajaMenor')) || [];
     let misProveedores = JSON.parse(localStorage.getItem('misProveedores')) || {};
     let misCentrosCosto = JSON.parse(localStorage.getItem('misCentrosCosto')) || [
@@ -99,21 +103,21 @@
     });
 
     function autocompletarProveedor() {
-        const nitIngresado = document.getElementById('nit').value;
+        const nitIngresado = document.getElementById('nit').value.trim();
         if (misProveedores[nitIngresado]) {
             document.getElementById('proveedor').value = misProveedores[nitIngresado];
         }
     }
 
     function guardarNuevoCC() {
-        const cod = document.getElementById('nuevoCodCC').value;
-        const nom = document.getElementById('nuevoNomCC').value;
-        if(!cod || !nom) return alert("Llena ambos campos");
+        const cod = document.getElementById('nuevoCodCC').value.trim();
+        const nom = document.getElementById('nuevoNomCC').value.trim();
+        if(!cod || !nom) return alert("Por favor, llena el c車digo y el nombre");
 
         misCentrosCosto.push({cod, nom});
         localStorage.setItem('misCentrosCosto', JSON.stringify(misCentrosCosto));
         renderizarCentrosCosto();
-        alert("Centro de costo guardado");
+        alert("Centro de costo guardado correctamente");
         document.getElementById('nuevoCodCC').value = "";
         document.getElementById('nuevoNomCC').value = "";
     }
@@ -138,10 +142,10 @@
     }
 
     function agregarGasto() {
-        const prov = document.getElementById('proveedor').value;
-        const nit = document.getElementById('nit').value;
+        const prov = document.getElementById('proveedor').value.trim();
+        const nit = document.getElementById('nit').value.trim();
         const centro = document.getElementById('centroCosto').value;
-        const desc = document.getElementById('descripcion').value;
+        const desc = document.getElementById('descripcion').value.trim();
         const val = parseFloat(document.getElementById('valor').value);
         
         if(!prov || !val || !nit || !centro) return alert("Proveedor, NIT, Centro de Costo y Valor son obligatorios");
@@ -155,18 +159,14 @@
             "Proveedor": prov,
             "NIT": nit,
             "Centro de costo": centro,
-            "Descripcion": desc,
+            "Descripci車n": desc,
             "Valores": val
         };
 
         listaGastos.push(nuevo);
-        guardarEnMemoria();
+        localStorage.setItem('reporteCajaMenor', JSON.stringify(listaGastos));
         actualizarTabla();
         limpiarFormulario();
-    }
-
-    function guardarEnMemoria() {
-        localStorage.setItem('reporteCajaMenor', JSON.stringify(listaGastos));
     }
 
     function actualizarTabla() {
@@ -179,38 +179,46 @@
                 <td>${g.Proveedor}</td>
                 <td>${g["Centro de costo"]}</td>
                 <td>$${g.Valores.toLocaleString()}</td>
-                <td><button onclick="eliminarGasto(${index})" style="background:red; color:white; border:none; border-radius:4px;">X</button></td>
+                <td><button onclick="eliminarGasto(${index})" style="background:red; color:white; border:none; border-radius:4px; padding: 2px 8px;">X</button></td>
             </tr>`;
         });
     }
 
     function eliminarGasto(index) {
-        if(confirm("?Eliminar este registro?")) {
+        if(confirm("?Deseas eliminar este registro?")) {
             listaGastos.splice(index, 1);
-            guardarEnMemoria();
+            localStorage.setItem('reporteCajaMenor', JSON.stringify(listaGastos));
             actualizarTabla();
+            if(listaGastos.length === 0) document.getElementById('previewArea').style.display = "none";
         }
     }
 
     function exportarExcel() {
-        if (listaGastos.length === 0) return alert("No hay datos");
+        if (listaGastos.length === 0) return alert("No hay gastos para exportar");
         const total = listaGastos.reduce((sum, g) => sum + g.Valores, 0);
-        const reporteFinal = listaGastos.map(g => ({...g}));
-        reporteFinal.push({ "Proveedor": "TOTAL GENERAL", "Valores": total });
+        const reporteFinal = listaGastos.map(g => ({
+            "Proveedor": g.Proveedor,
+            "NIT": g.NIT,
+            "Centro de costo": g["Centro de costo"],
+            "Descripci車n": g.Descripci車n,
+            "Valores": g.Valores
+        }));
+        reporteFinal.push({ "Proveedor": "GRAND TOTAL", "Valores": total });
 
         const ws = XLSX.utils.json_to_sheet(reporteFinal);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Reporte");
+        XLSX.utils.book_append_sheet(wb, ws, "Reporte_Caja");
         XLSX.writeFile(wb, "Solicitud_Reembolso.xlsx");
         
-        window.location.href = `mailto:contabilidad@empresa.com?subject=Reembolso&body=Total: $${total}`;
+        window.location.href = `mailto:contabilidad@empresa.com?subject=Reembolso Caja Menor&body=Hola, adjunto env赤o el reporte por un total de $${total.toLocaleString()}.`;
     }
 
     function vaciarTodo() {
-        if(confirm("?Borrar todo el reporte actual?")) {
+        if(confirm("?Est芍s seguro de borrar todo el reporte actual?")) {
             listaGastos = [];
             localStorage.removeItem('reporteCajaMenor');
-            location.reload();
+            actualizarTabla();
+            document.getElementById('previewArea').style.display = "none";
         }
     }
 
