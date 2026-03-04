@@ -6,7 +6,7 @@
     <title>Reporte Caja Menor Pro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 15px; background: #e9ecef; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 15px; background: #e9ecef; }
         .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         h2 { color: #0056b3; text-align: center; margin-top: 0; }
         .form-group { margin-bottom: 12px; }
@@ -34,26 +34,26 @@
 
     <div class="form-group">
         <label>Proveedor</label>
-        <input type="text" id="proveedor" placeholder="Ej: Ferreter赤a La Roca">
+        <input type="text" id="proveedor" placeholder="Ej: Ferreter&iacute;a La Roca">
     </div>
 
     <details>
         <summary>?? Configurar Nuevos Centros de Costo</summary>
         <div style="margin-top: 10px;">
-            <input type="text" id="nuevoCodCC" placeholder="C車digo (ej: 23823...)">
-            <input type="text" id="nuevoNomCC" placeholder="Nombre (ej: Papeler赤a)" style="margin-top: 5px;">
+            <input type="text" id="nuevoCodCC" placeholder="C&oacute;digo (ej: 23823...)">
+            <input type="text" id="nuevoNomCC" placeholder="Nombre (ej: Papeler&iacute;a)" style="margin-top: 5px;">
             <button onclick="guardarNuevoCC()" style="background: #6c757d; color:white; border:none; padding:8px; width:100%; margin-top:8px; border-radius:4px;">+ Registrar Centro de Costo</button>
         </div>
     </details>
 
     <div class="form-group" style="margin-top: 15px;">
-        <label>Centro de Costo (Busca por nombre o c車digo)</label>
+        <label>Centro de Costo (Busca por nombre o c&oacute;digo)</label>
         <input type="text" id="busquedaCC" placeholder="?? Escribe para buscar..." oninput="filtrarCentros()" style="margin-bottom: 5px;">
         <select id="centroCosto" size="5"></select>
     </div>
 
     <div class="form-group">
-        <label>Descripci車n</label>
+        <label>Descripci&oacute;n</label>
         <input type="text" id="descripcion" placeholder="Ej: Compra de Rastrillos">
     </div>
 
@@ -87,12 +87,11 @@
 </div>
 
 <script>
-    // Bases de datos locales
     let listaGastos = JSON.parse(localStorage.getItem('reporteCajaMenor')) || [];
     let misProveedores = JSON.parse(localStorage.getItem('misProveedores')) || {};
     let misCentrosCosto = JSON.parse(localStorage.getItem('misCentrosCosto')) || [
         {cod: "2382300250000101", nom: "Mantenimiento"},
-        {cod: "2382301317000104", nom: "Papeler赤a"},
+        {cod: "2382301317000104", nom: "Papeler&iacute;a"},
         {cod: "2382300253000401", nom: "Obras Civiles"},
         {cod: "2382301199001004", nom: "Servicios"}
     ];
@@ -112,7 +111,7 @@
     function guardarNuevoCC() {
         const cod = document.getElementById('nuevoCodCC').value.trim();
         const nom = document.getElementById('nuevoNomCC').value.trim();
-        if(!cod || !nom) return alert("Por favor, llena el c車digo y el nombre");
+        if(!cod || !nom) return alert("Por favor, llena el c\u00f3digo y el nombre");
 
         misCentrosCosto.push({cod, nom});
         localStorage.setItem('misCentrosCosto', JSON.stringify(misCentrosCosto));
@@ -128,7 +127,10 @@
         misCentrosCosto.forEach(cc => {
             const opt = document.createElement('option');
             opt.value = cc.cod;
-            opt.textContent = `${cc.nom} (${cc.cod})`;
+            // Usamos una funci\u00f3n para decodificar las entidades en el JS
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = cc.nom;
+            opt.textContent = tempDiv.textContent + " (" + cc.cod + ")";
             select.appendChild(opt);
         });
     }
@@ -159,7 +161,7 @@
             "Proveedor": prov,
             "NIT": nit,
             "Centro de costo": centro,
-            "Descripci車n": desc,
+            "Descripci\u00f3n": desc,
             "Valores": val
         };
 
@@ -175,17 +177,17 @@
         document.getElementById('previewArea').style.display = "block";
 
         listaGastos.forEach((g, index) => {
-            cuerpo.innerHTML += `<tr>
-                <td>${g.Proveedor}</td>
-                <td>${g["Centro de costo"]}</td>
-                <td>$${g.Valores.toLocaleString()}</td>
-                <td><button onclick="eliminarGasto(${index})" style="background:red; color:white; border:none; border-radius:4px; padding: 2px 8px;">X</button></td>
-            </tr>`;
+            cuerpo.innerHTML += "<tr>" +
+                "<td>" + g.Proveedor + "</td>" +
+                "<td>" + g["Centro de costo"] + "</td>" +
+                "<td>$" + g.Valores.toLocaleString() + "</td>" +
+                "<td><button onclick='eliminarGasto(" + index + ")' style='background:red; color:white; border:none; border-radius:4px; padding: 2px 8px;'>X</button></td>" +
+            "</tr>";
         });
     }
 
     function eliminarGasto(index) {
-        if(confirm("?Deseas eliminar este registro?")) {
+        if(confirm("\u00bfDeseas eliminar este registro?")) {
             listaGastos.splice(index, 1);
             localStorage.setItem('reporteCajaMenor', JSON.stringify(listaGastos));
             actualizarTabla();
@@ -200,7 +202,7 @@
             "Proveedor": g.Proveedor,
             "NIT": g.NIT,
             "Centro de costo": g["Centro de costo"],
-            "Descripci車n": g.Descripci車n,
+            "Descripci\u00f3n": g["Descripci\u00f3n"],
             "Valores": g.Valores
         }));
         reporteFinal.push({ "Proveedor": "GRAND TOTAL", "Valores": total });
@@ -210,11 +212,11 @@
         XLSX.utils.book_append_sheet(wb, ws, "Reporte_Caja");
         XLSX.writeFile(wb, "Solicitud_Reembolso.xlsx");
         
-        window.location.href = `mailto:contabilidad@empresa.com?subject=Reembolso Caja Menor&body=Hola, adjunto env赤o el reporte por un total de $${total.toLocaleString()}.`;
+        window.location.href = "mailto:contabilidad@empresa.com?subject=Reembolso Caja Menor&body=Hola, adjunto env\u00edo el reporte por un total de $" + total.toLocaleString();
     }
 
     function vaciarTodo() {
-        if(confirm("?Est芍s seguro de borrar todo el reporte actual?")) {
+        if(confirm("\u00bfEst\u00e1s seguro de borrar todo el reporte actual?")) {
             listaGastos = [];
             localStorage.removeItem('reporteCajaMenor');
             actualizarTabla();
