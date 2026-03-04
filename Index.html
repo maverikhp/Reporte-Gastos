@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte Caja Menor Pro</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 15px; background: #e9ecef; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h2 { color: #0056b3; text-align: center; }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.9em; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        .btn-add { background: #28a745; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-export { background: #007bff; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; font-weight: bold; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.8em; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #d1ecf1; }
+        .total-row { font-weight: bold; background: #eee; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Registro de Gastos</h2>
+    
+    <div class="form-group">
+        <label>Proveedor</label>
+        <input type="text" id="proveedor" placeholder="Ej: Ferreteria La Roca">
+    </div>
+    
+    <div class="form-group">
+        <label>NIT</label>
+        <input type="text" id="nit" placeholder="Ej: 52621734-1">
+    </div>
+
+    <div class="form-group">
+    <label>Centro de Costo (Busca por nombre o código)</label>
+    <input type="text" id="busquedaCC" placeholder="🔍 Escribe para buscar..." oninput="filtrarCentros()">
+    
+    <select id="centroCosto" size="5">
+        <option value="2382300250000101">Mantenimiento (2382300250000101)</option>
+        <option value="2382301317000104">Papelería (2382301317000104)</option>
+        <option value="2382300253000401">Obras Civiles (2382300253000401)</option>
+        <option value="2382301199001004">Servicios (2382301199001004)</option>
+        <option value="2382300550000202">Cafetería (2382300550000202)</option>
+        <option value="2382301999000303">Transporte (2382301999000303)</option>
+    </select>
+</div>
+
+    <div class="form-group">
+        <label>Descripción</label>
+        <input type="text" id="descripcion" placeholder="Ej: Compra de Rastrillos">
+    </div>
+
+    <div class="form-group">
+        <label>Valor ($)</label>
+        <input type="number" id="valor" placeholder="0.00">
+    </div>
+
+    <div class="form-group">
+        <label>Foto Recibo</label>
+        <input type="file" id="foto" accept="image/*" capture="environment">
+    </div>
+
+    <button class="btn-add" onclick="agregarGasto()">+ Agregar al Reporte</button>
+
+    <div id="previewArea" style="display:none;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Proveedor</th>
+                    <th>Centro</th>
+                    <th>Valor</th>
+                </tr>
+            </thead>
+            <tbody id="tablaCuerpo"></tbody>
+        </table>
+        <button class="btn-export" onclick="exportarExcel()">Generar y Enviar Excel</button>
+    </div>
+</div>
+
+<script>
+    // 1. Cargar datos guardados al iniciar la aplicación
+    let listaGastos = JSON.parse(localStorage.getItem('reporteCajaMenor')) || [];
+    
+    // Si ya había datos, mostrar la tabla de inmediato
+    if (listaGastos.length > 0) {
+        actualizarTabla();
+    }
+	
+	function filtrarCentros() {
+		const textoBusqueda = document.getElementById('busquedaCC').value.toLowerCase();
+		const select = document.getElementById('centroCosto');
+		const opciones = select.options;
+
+		for (let i = 0; i < opciones.length; i++) {
+			const textoOpcion = opciones[i].text.toLowerCase();
+			// Si el texto de la opción incluye lo que escribimos, la mostramos
+			if (textoOpcion.includes(textoBusqueda)) {
+				opciones[i].style.display = ""; 
+			} else {
+				opciones[i].style.display = "none"; // Ocultamos si no coincide
+			}
+		}
+	}
+	
+    function agregarGasto() {
+        const prov = document.getElementById('proveedor').value;
+        const nit = document.getElementById('nit').value;
+        const centro = document.getElementById('centroCosto').value;
+        const desc = document.getElementById('descripcion').value;
+        const val = parseFloat(document.getElementById('valor').value);
+        
+        if(!prov || !val) return alert("Por favor completa Proveedor y Valor");
+
+        const nuevo = {
+            "Proveedor": prov,
+            "NIT": nit || "(blank)",
+            "Centro de costo": centro,
+            "Descripcion": desc,
+            "Valores": val
+        };
+
+        // 2. Guardar en el array y sincronizar con LocalStorage
+        listaGastos.push(nuevo);
+        guardarEnMemoria();
+        
+        actualizarTabla();
+        limpiarFormulario();
+    }
+
+    function guardarEnMemoria() {
+        localStorage.setItem('reporteCajaMenor', JSON.stringify(listaGastos));
+    }
+
+    function actualizarTabla() {
+        const cuerpo = document.getElementById('tablaCuerpo');
+        cuerpo.innerHTML = "";
+        document.getElementById('previewArea').style.display = "block";
+
+        listaGastos.forEach((g, index) => {
+            cuerpo.innerHTML += `<tr>
+                <td>${g.Proveedor}</td>
+                <td>${g["Centro de costo"]}</td>
+                <td>$${g.Valores.toLocaleString()}</td>
+                <td><button onclick="eliminarGasto(${index})" style="background:red; color:white; border:none; border-radius:4px; padding:2px 5px;">X</button></td>
+            </tr>`;
+        });
+    }
+
+    function eliminarGasto(index) {
+        if(confirm("¿Eliminar este registro?")) {
+            listaGastos.splice(index, 1);
+            guardarEnMemoria();
+            actualizarTabla();
+        }
+    }
+
+    function vaciarTodo() {
+        if(confirm("¿Estás seguro de que quieres borrar TODO el reporte actual?")) {
+            listaGastos = [];
+            localStorage.removeItem('reporteCajaMenor');
+            location.reload(); // Refresca la interfaz
+        }
+    }
+
+    function limpiarFormulario() {
+        document.getElementById('proveedor').value = "";
+        document.getElementById('nit').value = "";
+        document.getElementById('descripcion').value = "";
+        document.getElementById('valor').value = "";
+    }
+
+    function exportarExcel() {
+        if (listaGastos.length === 0) return alert("No hay datos para exportar");
+
+        const total = listaGastos.reduce((sum, g) => sum + g.Valores, 0);
+        
+        // Formatear datos para el Excel igual a la imagen
+        const reporteFinal = listaGastos.map(g => ({
+            "Proveedor": g.Proveedor,
+            "NIT": g.NIT,
+            "Centro de costo": g["Centro de costo"],
+            "Descripción": g.Descripcion,
+            "Valores": g.Valores
+        }));
+
+        reporteFinal.push({ "Proveedor": "TOTAL GENERAL", "Valores": total });
+
+        const ws = XLSX.utils.json_to_sheet(reporteFinal);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Reporte_Caja");
+
+        XLSX.writeFile(wb, "Solicitud_Reembolso.xlsx");
+        
+        window.location.href = `mailto:contabilidad@empresa.com?subject=Reembolso Caja Menor&body=Se adjunta reporte por valor total de $${total.toLocaleString()}.`;
+    }
+</script>
+
+</body>
+</html>
